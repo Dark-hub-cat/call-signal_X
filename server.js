@@ -1,8 +1,8 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 app.use(cors());
 app.use(express.json());
@@ -20,7 +20,9 @@ app.post('/signal/:room', (req, res) => {
 app.get('/signal/:room', (req, res) => {
   const { room } = req.params;
   const signals = rooms.has(room) ? rooms.get(room) : [];
-  rooms.delete(room);
+  if (signals.length > 0) {
+    rooms.delete(room); // ← Удаляем ТОЛЬКО если были сигналы
+  }
   res.json(signals);
 });
 
