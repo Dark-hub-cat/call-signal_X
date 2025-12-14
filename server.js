@@ -30,8 +30,11 @@ app.post('/signal/:room', (req, res) => {
 // GET /signal/:room — получить сигналы (без удаления!)
 app.get('/signal/:room', (req, res) => {
   const { room } = req.params;
-  const signals = rooms.has(room) ? rooms.get(room) : [];
-  res.json(signals);
+  if (!rooms.has(room)) {
+    return res.json([]); // Если комнаты нет — вернуть пустой массив
+  }
+  const signals = rooms.get(room);
+  res.json(signals || []); // На всякий случай — если signals undefined
 });
 
 // Health check
