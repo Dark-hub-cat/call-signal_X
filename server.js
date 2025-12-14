@@ -2,44 +2,62 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 10000; // Render требует 10000
+const PORT = process.env.PORT || 10000;
 
 app.use(cors());
 app.use(express.json());
 
+// Хранилище комнат (в памяти)
 const rooms = new Map();
 
-// POST /signal/:room — отправить сигнал
+// POST /signal/:room — отправить сигнал (offer/answer/ice)
 app.post('/signal/:room', (req, res) => {
   const { room } = req.params;
   
-  // Если комнаты нет — создать и запланировать автоочистку
+  // Если комнаты нет — создать
   if (!rooms.has(room)) {
     rooms.set(room, []);
-    // Удалим комнату через 10 минут (600 000 мс)
+    // Автоочистка через 10 минут
     setTimeout(() => {
       rooms.delete(room);
-      console.log(`🗑️ Комната ${room} удалена (автоочистка)`);
+      console.log(`🗑️ Комната ${room} удалена`);
     }, 10 * 60 * 1000);
   }
 
+  // Добавляем сигнал
   rooms.get(room).push(req.body);
-  res.json({ ok: true });
+
+  // Ответ
+  res.status(200).json({ ok: true });
 });
 
-// GET /signal/:room — получить сигналы (без удаления!)
+// GET /signal/:room — получить все непрочитанные сигналы
 app.get('/signal/:room', (req, res) => {
   const { room } = req.params;
+  
+  // Если комнаты нет — вернуть пустой массив
   if (!rooms.has(room)) {
-    return res.json([]); // Если комнаты нет — вернуть пустой массив
+    return res.status(200).json([]);
   }
+
+  // Получаем сигналы
   const signals = rooms.get(room);
-  res.json(signals || []); // На всякий случай — если signals undefined
+
+  // Возвращаем и очищаем (чтобы не дублировались)
+  rooms.delete(room); // Удаляем после чтения
+
+  res.status(200).json(signals || []);
 });
 
 // Health check
 app.get('/', (req, res) => {
-  res.json({ status: 'WebRTC Signal Server v1.0' });
+  res.status(200).json({ status: 'WebRTC Signal Server v1.0' });
+});
+
+// Обработка ошибок (на всякий случай)
+app.use((err, req, res, next) => {
+  console.error('Ошибка сервера:', err);
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 app.listen(PORT, () => {
