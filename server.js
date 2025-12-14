@@ -4,7 +4,11 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-app.use(cors());
+app.use(cors({
+  origin: '*', // Разрешить всем
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
 app.use(express.json());
 
 // Хранилище комнат (в памяти)
@@ -43,9 +47,8 @@ app.get('/signal/:room', (req, res) => {
   // Получаем сигналы
   const signals = rooms.get(room);
 
-  // Возвращаем и очищаем (чтобы не дублировались)
-  rooms.delete(room); // Удаляем после чтения
-
+  // Возвращаем сигналы, но НЕ удаляем комнату
+  // Комнату удалим через setTimeout при создании
   res.status(200).json(signals || []);
 });
 
