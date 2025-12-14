@@ -4,11 +4,24 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+// Настройка CORS
 app.use(cors({
-  origin: '*', // Разрешить всем
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
+
+// Обработка preflight-запросов
+app.options('*', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(204);
+});
+
 app.use(express.json());
 
 // Хранилище комнат (в памяти)
@@ -46,9 +59,9 @@ app.get('/signal/:room', (req, res) => {
 
   // Получаем сигналы
   const signals = rooms.get(room);
-  rooms.delete(room); // ← Удаляем комнату после первого чтения
-  // Возвращаем сигналы, но НЕ удаляем комнату
-  // Комнату удалим через setTimeout при создании
+
+  // Возвращаем сигналы и удаляем комнату
+  rooms.delete(room);
   res.status(200).json(signals || []);
 });
 
@@ -57,7 +70,7 @@ app.get('/', (req, res) => {
   res.status(200).json({ status: 'WebRTC Signal Server v1.0' });
 });
 
-// Обработка ошибок (на всякий случай)
+// Обработка ошибок
 app.use((err, req, res, next) => {
   console.error('Ошибка сервера:', err);
   res.status(500).json({ error: 'Internal Server Error' });
