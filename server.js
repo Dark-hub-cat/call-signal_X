@@ -46,7 +46,7 @@ app.get('/signal/:room', (req, res) => {
 
   // Получаем сигналы
   const signals = rooms.get(room);
-
+  rooms.delete(room); // ← Удаляем комнату после первого чтения
   // Возвращаем сигналы, но НЕ удаляем комнату
   // Комнату удалим через setTimeout при создании
   res.status(200).json(signals || []);
