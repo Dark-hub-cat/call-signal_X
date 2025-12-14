@@ -4,20 +4,26 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Настройка CORS
+// Настройка CORS с полной поддержкой всех заголовков
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'Cache-Control',
+    'expires', // ← Критически важный заголовок
+    'x-requested-with'
+  ],
   credentials: false,
   optionsSuccessStatus: 204
 }));
 
-// Обработка OPTIONS-запросов (preflight)
+// Обработка OPTIONS-запросов (pre-flight)
 app.options('*', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control, expires, x-requested-with');
   res.setHeader('Access-Control-Max-Age', '86400');
   res.sendStatus(204);
 });
@@ -55,12 +61,6 @@ app.get('/signal/:room', (req, res) => {
 // Health check
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'WebRTC Signal Server v1.0' });
-});
-
-// Обработка ошибок
-app.use((err, req, res, next) => {
-  console.error('Ошибка сервера:', err);
-  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 app.listen(PORT, () => {
