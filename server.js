@@ -4,22 +4,18 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Настройка CORS
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false,
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-}));
-
-// Обработка preflight-запросов
-app.options('*', (req, res) => {
+// Настройка CORS через middleware (совместимо с новыми версиями Express)
+app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.sendStatus(204);
+  
+  // Обработка preflight-запросов
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  
+  next();
 });
 
 app.use(express.json());
