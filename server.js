@@ -2,30 +2,39 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 10000; // Render требует 10000
 
 app.use(cors());
 app.use(express.json());
 
 const rooms = new Map();
 
+// POST /signal/:room — отправить сигнал
 app.post('/signal/:room', (req, res) => {
   const { room } = req.params;
-  if (!rooms.has(room)) rooms.set(room, []);
+  
+  // Если комнаты нет — создать и запланировать автоочистку
+  if (!rooms.has(room)) {
+    rooms.set(room, []);
+    // Удалим комнату через 10 минут (600 000 мс)
+    setTimeout(() => {
+      rooms.delete(room);
+      console.log(`🗑️ Комната ${room} удалена (автоочистка)`);
+    }, 10 * 60 * 1000);
+  }
+
   rooms.get(room).push(req.body);
-  setTimeout(() => rooms.delete(room), 10 * 60 * 1000);
   res.json({ ok: true });
 });
 
+// GET /signal/:room — получить сигналы (без удаления!)
 app.get('/signal/:room', (req, res) => {
   const { room } = req.params;
   const signals = rooms.has(room) ? rooms.get(room) : [];
-  if (signals.length > 0) {
-    rooms.delete(room); // ← Удаляем ТОЛЬКО если были сигналы
-  }
   res.json(signals);
 });
 
+// Health check
 app.get('/', (req, res) => {
   res.json({ status: 'WebRTC Signal Server v1.0' });
 });
