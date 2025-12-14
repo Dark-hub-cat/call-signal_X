@@ -4,72 +4,59 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Настройка CORS через middleware (совместимо с новыми версиями Express)
-app.use((req, res, next) => {
+// Настройка CORS (проверенная рабочая конфигурация)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
+  credentials: false,
+  optionsSuccessStatus: 204
+}));
+
+// Обязательно: обработка OPTIONS-запросов ДО всех других middleware
+app.options('*', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
-  // Обработка preflight-запросов
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  
-  next();
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
+  res.setHeader('Access-Control-Max-Age', '86400'); // 24 часа кэширования preflight
+  res.sendStatus(204);
 });
 
+// Важно: после CORS добавляем body-parser
 app.use(express.json());
 
 // Хранилище комнат (в памяти)
 const rooms = new Map();
 
-// POST /signal/:room — отправить сигнал (offer/answer/ice)
+// POST /signal/:room — отправить сигнал
 app.post('/signal/:room', (req, res) => {
   const { room } = req.params;
   
-  // Если комнаты нет — создать
   if (!rooms.has(room)) {
     rooms.set(room, []);
-    // Автоочистка через 10 минут
-    setTimeout(() => {
-      rooms.delete(room);
-      console.log(`🗑️ Комната ${room} удалена`);
-    }, 10 * 60 * 1000);
+    setTimeout(() => rooms.delete(room), 10 * 60 * 1000);
   }
 
-  // Добавляем сигнал
   rooms.get(room).push(req.body);
-
-  // Ответ
   res.status(200).json({ ok: true });
 });
 
-// GET /signal/:room — получить все непрочитанные сигналы
+// GET /signal/:room — получить сигналы
 app.get('/signal/:room', (req, res) => {
   const { room } = req.params;
+  const signals = rooms.has(room) ? rooms.get(room) : [];
   
-  // Если комнаты нет — вернуть пустой массив
-  if (!rooms.has(room)) {
-    return res.status(200).json([]);
+  // Удаляем комнату только если есть сигналы
+  if (signals.length > 0) {
+    rooms.delete(room);
   }
-
-  // Получаем сигналы
-  const signals = rooms.get(room);
-
-  // Возвращаем сигналы и удаляем комнату
-  rooms.delete(room);
-  res.status(200).json(signals || []);
+  
+  res.status(200).json(signals);
 });
 
 // Health check
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'WebRTC Signal Server v1.0' });
-});
-
-// Обработка ошибок
-app.use((err, req, res, next) => {
-  console.error('Ошибка сервера:', err);
-  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 app.listen(PORT, () => {
