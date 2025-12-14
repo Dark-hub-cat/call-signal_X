@@ -4,7 +4,7 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Настройка CORS (проверенная рабочая конфигурация)
+// Настройка CORS
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -13,22 +13,21 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 
-// Обязательно: обработка OPTIONS-запросов ДО всех других middleware
+// Обработка OPTIONS-запросов (preflight)
 app.options('*', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
-  res.setHeader('Access-Control-Max-Age', '86400'); // 24 часа кэширования preflight
+  res.setHeader('Access-Control-Max-Age', '86400');
   res.sendStatus(204);
 });
 
-// Важно: после CORS добавляем body-parser
 app.use(express.json());
 
-// Хранилище комнат (в памяти)
+// Хранилище комнат
 const rooms = new Map();
 
-// POST /signal/:room — отправить сигнал
+// POST /signal/:room
 app.post('/signal/:room', (req, res) => {
   const { room } = req.params;
   
@@ -41,12 +40,11 @@ app.post('/signal/:room', (req, res) => {
   res.status(200).json({ ok: true });
 });
 
-// GET /signal/:room — получить сигналы
+// GET /signal/:room
 app.get('/signal/:room', (req, res) => {
   const { room } = req.params;
   const signals = rooms.has(room) ? rooms.get(room) : [];
   
-  // Удаляем комнату только если есть сигналы
   if (signals.length > 0) {
     rooms.delete(room);
   }
@@ -57,6 +55,12 @@ app.get('/signal/:room', (req, res) => {
 // Health check
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'WebRTC Signal Server v1.0' });
+});
+
+// Обработка ошибок
+app.use((err, req, res, next) => {
+  console.error('Ошибка сервера:', err);
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 app.listen(PORT, () => {
